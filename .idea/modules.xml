@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/pdfDsignerLocal.iml" filepath="$PROJECT_DIR$/pdfDsignerLocal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/pdfSign/pdfSign.iml" filepath="$PROJECT_DIR$/pdfSign/pdfSign.iml" />
+      <module fileurl="file://$PROJECT_DIR$/toolkit-core/toolkit-core.iml" filepath="$PROJECT_DIR$/toolkit-core/toolkit-core.iml" />
+    </modules>
+  </component>
+</project>

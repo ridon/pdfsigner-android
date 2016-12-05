@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">PDFSign</string>
+
+    <string name="sign">Tandatangni</string>
+    <string name="text_sign">Tandatangani</string>
+    <string name="text_wait">Tolong tunggu</string>
+    <string name="close">Tutup</string>
+    <string name="text_document_saved_in">Dokumen disimpan di: </string>
+    <string name="text_share">Bagikan</string>
+</resources>
