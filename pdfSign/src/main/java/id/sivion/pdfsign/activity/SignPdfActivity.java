@@ -13,6 +13,8 @@ import android.support.v7.widget.CardView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -29,8 +31,10 @@ import butterknife.OnClick;
 import de.greenrobot.event.EventBus;
 import id.sivion.pdfsign.DroidSignerApplication;
 import id.sivion.pdfsign.R;
+import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
 import id.sivion.pdfsign.job.JobStatus;
+import id.sivion.pdfsign.utils.TsaClient;
 
 /**
  * Created by miftakhul on 20/10/16.
@@ -52,7 +56,8 @@ public class SignPdfActivity extends AppCompatActivity {
     private AlertDialog signAlert;
 
     private String pdfPath;
-    private String name,reason,location;
+    private String name, reason, location;
+    private boolean useTsa = true;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -88,16 +93,26 @@ public class SignPdfActivity extends AppCompatActivity {
         final EditText editName = (EditText) view.findViewById(R.id.edit_name);
         final EditText editReason = (EditText) view.findViewById(R.id.edit_reason);
         final EditText editLocation = (EditText) view.findViewById(R.id.edit_location);
+        CheckBox checkUseTsa = (CheckBox) view.findViewById(R.id.check_use_tsa);
+        Button btnTsaHelp = (Button) view.findViewById(R.id.btn_tsa_help);
+
         signOptions.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
-                if (layoutOptions.getVisibility() == View.VISIBLE){
+                if (layoutOptions.getVisibility() == View.VISIBLE) {
                     layoutOptions.setVisibility(View.GONE);
-                }else if (layoutOptions.getVisibility() == View.GONE){
+                } else if (layoutOptions.getVisibility() == View.GONE) {
                     layoutOptions.setVisibility(View.VISIBLE);
                 }
 
+            }
+        });
+
+        checkUseTsa.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
+                useTsa = checked;
             }
         });
 
@@ -106,11 +121,13 @@ public class SignPdfActivity extends AppCompatActivity {
         builder.setPositiveButton(R.string.sign, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                jobManager.addJobInBackground(DocumentSignPdfJob.
-                        newInstance(pdfPath,
-                                editName.getText().toString(),
-                                editReason.getText().toString(),
-                                editLocation.getText().toString()));
+
+                name = editName.getText().toString();
+                reason = editReason.getText().toString();
+                location = editLocation.getText().toString();
+
+                jobManager.addJobInBackground(new CertificateCheckJob());
+
             }
         });
 
@@ -138,18 +155,66 @@ public class SignPdfActivity extends AppCompatActivity {
 
     public void onEventMainThread(DocumentSignPdfJob.DocumentSignEvent event) {
 
-        if (event.getStatus() == JobStatus.ADDED){
+        if (event.getStatus() == JobStatus.ADDED) {
             progressDialog.show();
 
-        }else if (event.getStatus() == JobStatus.SUCCESS) {
+        } else if (event.getStatus() == JobStatus.SUCCESS) {
             progressDialog.dismiss();
             dialogSuccess(event.getFilePath());
 
         } else if (event.getStatus() == JobStatus.ABORTED) {
             progressDialog.dismiss();
-            Toast.makeText(this, "Signing document failed", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Gagal menandatangani dokumen", Toast.LENGTH_SHORT).show();
         }
 
+    }
+
+    public void onEventMainThread(CertificateCheckJob.CheckEvent event) {
+        if (event.getStatus() == CertificateCheckJob.CheckEvent.VALID) {
+            jobManager.addJobInBackground(DocumentSignPdfJob.
+                    newInstance(pdfPath,
+                            name,
+                            reason,
+                            location, useTsa));
+        } else {
+            dialogCertificateInValid();
+        }
+    }
+
+    public void onEventMainThread(TsaClient.TsaEvent event) {
+        if (event.getStatus() == TsaClient.TsaEvent.FAILED) {
+
+            dialogTsaFailed();
+        }
+    }
+
+
+    private void dialogCertificateInValid() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.text_certificate);
+        builder.setIcon(R.drawable.ic_certificate);
+        builder.setMessage(R.string.text_certificate_invalid);
+        builder.setPositiveButton(getString(R.string.text_close), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+        builder.show();
+    }
+
+    private void dialogTsaFailed() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.text_certificate);
+        builder.setIcon(R.drawable.ic_certificate);
+        builder.setMessage(R.string.text_tsa_connection_failed);
+        builder.setPositiveButton(getString(R.string.text_close), new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+        builder.show();
     }
 
 
@@ -165,7 +230,7 @@ public class SignPdfActivity extends AppCompatActivity {
         TextView pathInfo = (TextView) view.findViewById(R.id.text_path_info);
         Button buttonClose = (Button) view.findViewById(R.id.btn_close);
 
-        pathInfo.setText(getString(R.string.text_document_saved_in)+" "+filePath);
+        pathInfo.setText(getString(R.string.text_document_saved_in) + " " + filePath);
         buttonClose.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

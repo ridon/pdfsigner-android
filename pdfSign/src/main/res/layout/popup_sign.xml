@@ -8,23 +8,23 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Dokumen ini akan ditandatangani secara digital" />
+        android:text="Dokumen ini akan ditandatangani secara digital." />
 
     <TextView
         android:id="@+id/sign_options"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="8dp"
         android:text="Opsi"
-        android:textColor="@color/colorGrey"
+        android:textColor="@color/colorAccent"
         android:textStyle="bold" />
 
 
     <LinearLayout
+        android:id="@+id/layout_sign_options"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:id="@+id/layout_sign_options"
         android:visibility="gone">
 
         <EditText
@@ -53,6 +53,31 @@
             android:background="@drawable/edit_stroke"
             android:hint="Lokasi"
             android:padding="8dp" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:orientation="horizontal">
+
+        <CheckBox
+            android:id="@+id/check_use_tsa"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:checked="true"
+            android:text="Gunakan timestamp" />
+
+        <Button
+            android:id="@+id/btn_tsa_help"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginLeft="8dp"
+            android:background="@drawable/ic_help_24dp"
+            android:backgroundTint="@color/colorGrey" />
 
     </LinearLayout>
 

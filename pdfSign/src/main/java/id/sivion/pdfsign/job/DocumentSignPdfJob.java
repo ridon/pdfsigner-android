@@ -65,21 +65,21 @@ public class DocumentSignPdfJob extends Job {
     private final Logger log = LoggerFactory.getLogger(getClass());
     private String filePath, reason, location, name;
     private TsaClient tsaClient;
+    private boolean useTsa;
 
-
-    public static DocumentSignPdfJob newInstance(String filePath, String name, String reason, String location) {
+    public static DocumentSignPdfJob newInstance(String filePath, String name, String reason, String location, boolean useTsa) {
         DocumentSignPdfJob job = new DocumentSignPdfJob();
         job.filePath = filePath;
         job.name = name;
         job.reason = reason;
         job.location = location;
+        job.useTsa = useTsa;
 
         return job;
     }
 
     public DocumentSignPdfJob(){
         super(new Params(1).requireNetwork().persist());
-
     }
 
     @Override
@@ -129,9 +129,12 @@ public class DocumentSignPdfJob extends Job {
             signature.setReason(reason);
 
 
-            String tsaUrl = "https://tsa.rootca.or.id";
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            tsaClient = new TsaClient(new URL(tsaUrl), null, null, digest);
+            if (useTsa) {
+                String tsaUrl = preferences.getString(DroidSignerApplication.CONSTANT_TSA_URL, "");
+
+                MessageDigest digest = MessageDigest.getInstance("SHA-256");
+                tsaClient = new TsaClient(new URL(tsaUrl), null, null, digest);
+            }
 
             // the signing date, needed for valid signature
             signature.setSignDate(Calendar.getInstance());
@@ -173,11 +176,11 @@ public class DocumentSignPdfJob extends Job {
         }
 
         @Override
-        public byte[] sign(InputStream content) throws IOException {
-            byte[] bytes = IOUtils.toByteArray(content);
-            IOUtils.closeQuietly(content);
+        public byte[] sign(InputStream content) {
 
             try {
+                byte[] bytes = IOUtils.toByteArray(content);
+                IOUtils.closeQuietly(content);
                 Log.d("Private Key", key + "");
 
                 Store certStore = new JcaCertStore(Arrays.asList(chain[0]));
@@ -201,6 +204,7 @@ public class DocumentSignPdfJob extends Job {
                 return sigData.getEncoded();
             } catch (Exception e) {
                 Log.e(getClass().getName(), e.getMessage(), e);
+                EventBus.getDefault().post(new DocumentSignEvent("",null , JobStatus.ABORTED));
             }
 
             throw new RuntimeException("Problem while preparing signature");

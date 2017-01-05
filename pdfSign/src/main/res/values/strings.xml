@@ -1,10 +1,21 @@
 <resources>
     <string name="app_name">PDFSign</string>
 
+    <string name="app_tsa_url">https://tsa.rootca.or.id</string>
+
     <string name="sign">Tandatangni</string>
     <string name="text_sign">Tandatangani</string>
     <string name="text_wait">Tolong tunggu</string>
     <string name="close">Tutup</string>
     <string name="text_document_saved_in">Dokumen disimpan di: </string>
     <string name="text_share">Bagikan</string>
+    <string name="text_tsa_empty">Url Tsa masih kosong</string>
+    <string name="text_cancel">Batal</string>
+    <string name="text_apply">Terapkan</string>
+    <string name="text_custom_tsa">Kustom Tsa</string>
+    <string name="text_default_tsa">Gunakan default Tsa</string>
+    <string name="text_certificate_invalid">Sertifikat yang dipilih tidak valid</string>
+    <string name="text_certificate">Sertifikat</string>
+    <string name="text_close">Tutup</string>
+    <string name="text_tsa_connection_failed">Gagal terhubung dengan server timestamp.\n\nPilihan : \n1. Merubah alamat server timestamp.\n2. Menandatangani tanpa menggunakan timestamp.</string>
 </resources>

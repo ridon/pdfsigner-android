@@ -2,6 +2,8 @@ package id.sivion.pdfsign;
 
 import android.app.Application;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.support.multidex.MultiDex;
 import android.util.Log;
 
@@ -21,8 +23,11 @@ import io.fabric.sdk.android.Fabric;
  */
 public class DroidSignerApplication extends Application {
     private static DroidSignerApplication instance;
+    public static final String CONSTANT_TSA_URL = "tsa_url";
+
     private JobManager jobManager;
     private ObjectMapper objectMapper;
+    private SharedPreferences preferences;
 
     public DroidSignerApplication() {
         instance = this;
@@ -36,8 +41,21 @@ public class DroidSignerApplication extends Application {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         objectMapper.configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
 
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        SharedPreferences.Editor preferenceEditor = preferences.edit();
+
         Iconify.with(new FontAwesomeModule());
         configureJobManager();
+
+        String savedTsaUrl = preferences.getString("tsa_url", "");
+        String baseTsaUrl = getString(R.string.app_tsa_url);
+
+        if ("".equals(savedTsaUrl)){
+            preferenceEditor.putString(CONSTANT_TSA_URL, baseTsaUrl);
+            preferenceEditor.commit();
+        }
+
+
     }
 
 

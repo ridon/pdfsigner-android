@@ -9,11 +9,18 @@ import android.preference.PreferenceManager;
 import android.security.KeyChain;
 import android.security.KeyChainAliasCallback;
 import android.support.annotation.Nullable;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -92,6 +99,24 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
 
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.actions, menu);
+        return true;
+    }
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.menu_setting){
+            settingDialog();
+        }
+
+        return true;
+    }
+
+
+    @Override
     public void alias(String alias) {
         this.newAlias = alias;
         preferences.edit().putString("alias", newAlias).apply();
@@ -131,6 +156,7 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
         }
     }
 
+
     private void next(String pdfPath){
 
         Intent i = new Intent(this, SignPdfActivity.class);
@@ -138,6 +164,89 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
         startActivity(i);
     }
 
+
+    private void settingDialog(){
+        final SharedPreferences.Editor editPreference = preferences.edit();
+        View view = LayoutInflater.from(this).inflate(R.layout.tsa_popup, null);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(view);
+        final AlertDialog dialog = builder.create();
+
+        final CheckBox defaultTsa = (CheckBox) view.findViewById(R.id.check_tsa_url);
+        final EditText editTsa = (EditText) view.findViewById(R.id.edit_tsa_url);
+        final Button cancel = (Button) view.findViewById(R.id.btn_cancel);
+        Button apply = (Button) view.findViewById(R.id.btn_apply);
+
+        final String savedTsaUrl = preferences.getString(DroidSignerApplication.CONSTANT_TSA_URL, "");
+        final String baseTsaUrl = getString(R.string.app_tsa_url);
+
+        if (savedTsaUrl.equals(baseTsaUrl)){
+            defaultTsa.setChecked(true);
+            editTsa.setEnabled(false);
+        }else {
+            editTsa.setText(savedTsaUrl);
+        }
+
+        defaultTsa.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
+
+                editTsa.setError(null);
+
+                if (checked){
+                    editTsa.setEnabled(false);
+                    editTsa.getText().clear();
+
+                }else {
+
+                    editTsa.setEnabled(true);
+                    if (!savedTsaUrl.equals(baseTsaUrl)){
+                        editTsa.setText(savedTsaUrl);
+                    }
+
+                }
+
+            }
+        });
+
+        cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.dismiss();
+            }
+        });
+
+        apply.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String newTsaUrl;
+                newTsaUrl = editTsa.getText().toString();
+
+                if (!defaultTsa.isChecked()){
+
+                    if (newTsaUrl.isEmpty()){
+                        editTsa.setError(getString(R.string.text_tsa_empty));
+                    }else {
+                        editPreference.putString(DroidSignerApplication.CONSTANT_TSA_URL, newTsaUrl);
+                        editPreference.apply();
+                        dialog.dismiss();
+
+                    }
+
+                }else {
+                    editPreference.putString(DroidSignerApplication.CONSTANT_TSA_URL, baseTsaUrl);
+                    editPreference.apply();
+                    dialog.dismiss();
+                }
+            }
+        });
+
+
+        dialog.show();
+
+
+    }
 
     public void onEventMainThread(CertificateChainJob.CertificateChainEvent event) {
         if (event.getStatus() == JobStatus.SUCCESS) {

@@ -19,9 +19,12 @@ import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
+
+import de.greenrobot.event.EventBus;
 
 /**
  * Created by miftakhul on 07/11/16.
@@ -117,7 +120,11 @@ public class TsaClient {
         try {
             output = connection.getOutputStream();
             output.write(reqest);
-        }finally {
+        }catch (UnknownHostException e){
+            Log.d(getClass().getSimpleName(), "gagal terhubung ========= ");
+            EventBus.getDefault().post(new TsaEvent(TsaEvent.FAILED));
+        }
+        finally {
             IOUtils.closeQuietly(output);
         }
 
@@ -137,5 +144,21 @@ public class TsaClient {
 
         return response;
 
+    }
+
+
+    public static class TsaEvent{
+        public static int OK = 200;
+        public static int FAILED = 100;
+
+        private int status;
+
+        public TsaEvent(int status) {
+            this.status = status;
+        }
+
+        public int getStatus() {
+            return status;
+        }
     }
 }
