@@ -6,10 +6,12 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -22,6 +24,7 @@ import android.widget.Toast;
 
 import com.joanzapata.pdfview.PDFView;
 import com.path.android.jobqueue.JobManager;
+import com.tooltip.Tooltip;
 
 import java.io.File;
 
@@ -94,7 +97,7 @@ public class SignPdfActivity extends AppCompatActivity {
         final EditText editReason = (EditText) view.findViewById(R.id.edit_reason);
         final EditText editLocation = (EditText) view.findViewById(R.id.edit_location);
         CheckBox checkUseTsa = (CheckBox) view.findViewById(R.id.check_use_tsa);
-        Button btnTsaHelp = (Button) view.findViewById(R.id.btn_tsa_help);
+        final Button btnTsaHelp = (Button) view.findViewById(R.id.btn_tsa_help);
 
         signOptions.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -113,6 +116,21 @@ public class SignPdfActivity extends AppCompatActivity {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean checked) {
                 useTsa = checked;
+            }
+        });
+
+        btnTsaHelp.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                int backgroundColor = ContextCompat.getColor(SignPdfActivity.this, R.color.colorGrey);
+                int textColor = ContextCompat.getColor(SignPdfActivity.this, android.R.color.white);
+
+                new Tooltip.Builder(btnTsaHelp).setText("Waktu saat ini yang didapat dari server")
+                        .setBackgroundColor(backgroundColor)
+                        .setDismissOnClick(true)
+                        .setTextColor(textColor)
+                        .setGravity(Gravity.TOP)
+                        .show();
             }
         });
 

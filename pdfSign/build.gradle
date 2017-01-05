@@ -74,6 +74,7 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.4.3'
     compile 'de.greenrobot:greendao:2.0.0'
     compile 'com.github.mancj:MaterialSearchBar:0.3.1'
+    compile 'com.github.vihtarb:tooltip:0.1.9'
     compile('com.crashlytics.sdk.android:crashlytics:2.6.4@aar') {
         transitive = true;
     }
