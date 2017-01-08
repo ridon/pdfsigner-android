@@ -18,9 +18,6 @@ import android.view.MenuItem;
 
 import com.path.android.jobqueue.JobManager;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import de.greenrobot.event.EventBus;
@@ -42,12 +39,6 @@ public class SignDetail extends AppCompatActivity {
     @BindView(R.id.list_document)
     RecyclerView listDocument;
 
-    private SignInfo signInfo;
-    private List<SignInfo> signInfos = new ArrayList<>();
-    private CertificateInfo certificateInfo;
-    private List<CertificateInfo> certificateInfos = new ArrayList<>();
-
-    private AlertDialog noSignerDialog;
     private DocumentAdapter documentAdapter;
     private JobManager jobManager;
 
@@ -65,8 +56,6 @@ public class SignDetail extends AppCompatActivity {
 
         documentAdapter = new DocumentAdapter(this);
         jobManager = DroidSignerApplication.getInstance().getJobManager();
-
-        settupDialogNoSigner();
 
         setSupportActionBar(toolbar);
         ActionBar ac = getSupportActionBar();
@@ -114,7 +103,7 @@ public class SignDetail extends AppCompatActivity {
         }
         else if (event.getStatus() == SignDetailJob.SignDetailEvent.NO_SIGNER){
             progressDialog.dismiss();
-            settupDialogNoSigner();
+            dialogNoSigner();
         }
         else if (event.getStatus() == SignDetailJob.SignDetailEvent.SUCCESS){
             progressDialog.dismiss();
@@ -127,8 +116,9 @@ public class SignDetail extends AppCompatActivity {
 
 
 
-    private void settupDialogNoSigner() {
+    private void dialogNoSigner() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this)
+                .setIcon(R.mipmap.ic_launcher)
                 .setTitle(R.string.app_name)
                 .setMessage(R.string.text_dont_have_signature)
                 .setCancelable(false)
@@ -139,7 +129,7 @@ public class SignDetail extends AppCompatActivity {
                         onBackPressed();
                     }
                 });
-        noSignerDialog = builder.create();
+        builder.show();
     }
 
 

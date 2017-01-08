@@ -46,4 +46,5 @@
     <string name="text_certificate_not_trusted">Sertifikat tidak terpercaya</string>
     <string name="text_certificate_trusted">Sertifikat terpercaya</string>
     <string name="text_failed_open_pdf">Dokumen pdf tidak bisa dibuka</string>
+    <string name="text_no_internet">Perangkat tidak terhubung dengan internet</string>
 </resources>

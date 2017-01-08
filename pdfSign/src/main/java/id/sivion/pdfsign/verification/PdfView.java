@@ -51,6 +51,7 @@ import id.sivion.pdfsign.job.CertificateChainJob;
 import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
 import id.sivion.pdfsign.job.JobStatus;
+import id.sivion.pdfsign.utils.NetworkUtil;
 import id.sivion.pdfsign.utils.TsaClient;
 
 /**
@@ -176,13 +177,19 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     }
 
     public void showSignatureInfo(View view) {
-        Intent i = new Intent(this, SignDetail.class);
-        i.putExtra("pdfPath", pdfPath);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
-            startActivity(i, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
+        if (NetworkUtil.isConnected(this)) {
+
+            Intent i = new Intent(this, SignDetail.class);
+            i.putExtra("pdfPath", pdfPath);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                startActivity(i, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
+            } else {
+                startActivity(i);
+            }
         }else {
-            startActivity(i);
+            dialogNoInternet();
         }
     }
 
@@ -196,7 +203,6 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
             e.printStackTrace();
         }
     }
-
 
     public void requestSign(View view){
         View viewLayout = LayoutInflater.from(this).inflate(R.layout.certificate_popup, null);
@@ -229,6 +235,16 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
         requestSignDialog.show();
 
+    }
+
+    public void browseCertificate(View view){
+        if (Build.VERSION.SDK_INT <= 22) {
+            Log.d(getClass().getSimpleName(), "loli");
+            KeyChain.choosePrivateKeyAlias(this, this, null, null, null, -1, null);
+        } else {
+            Log.d(getClass().getSimpleName(), "masrs");
+            KeyChain.choosePrivateKeyAlias(this, this, null, null, null, null);
+        }
     }
 
     public void setupSignAlertDialog() {
@@ -300,17 +316,19 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
     }
 
-
-    public void browseCertificate(View view){
-        if (Build.VERSION.SDK_INT <= 22) {
-            Log.d(getClass().getSimpleName(), "loli");
-            KeyChain.choosePrivateKeyAlias(this, this, null, null, null, -1, null);
-        } else {
-            Log.d(getClass().getSimpleName(), "masrs");
-            KeyChain.choosePrivateKeyAlias(this, this, null, null, null, null);
-        }
+    private void dialogNoInternet(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setIcon(R.mipmap.ic_launcher);
+        builder.setTitle(R.string.app_name);
+        builder.setMessage(R.string.text_no_internet);
+        builder.setPositiveButton(R.string.close, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+        builder.show();
     }
-
 
     private void dialogCertificateInValid() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -339,7 +357,6 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
         });
         builder.show();
     }
-
 
     private void dialogSuccess(final String filePath) {
 
@@ -434,6 +451,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
             dialogCertificateInValid();
         }
     }
+
 
     public void onEventMainThread(TsaClient.TsaEvent event) {
         if (event.getStatus() == TsaClient.TsaEvent.FAILED) {
