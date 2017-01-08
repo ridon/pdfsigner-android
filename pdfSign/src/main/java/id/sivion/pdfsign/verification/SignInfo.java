@@ -2,8 +2,6 @@ package id.sivion.pdfsign.verification;
 
 import org.spongycastle.tsp.TimeStampToken;
 
-import java.util.List;
-
 /**
  * Created by miftakhul on 29/11/16.
  */
@@ -16,7 +14,7 @@ public class SignInfo {
     private String reason;
     private String signLocalTime;
     private TimeStampToken timesTamp;
-    private List<CertificateInfo> certificateInfos;
+    private CertificateInfo certificateInfo;
 
     public boolean isSignStatus() {
         return signStatus;
@@ -66,11 +64,11 @@ public class SignInfo {
         this.timesTamp = timesTamp;
     }
 
-    public List<CertificateInfo> getCertificateInfos() {
-        return certificateInfos;
+    public CertificateInfo getCertificateInfo() {
+        return certificateInfo;
     }
 
-    public void setCertificateInfos(List<CertificateInfo> certificateInfos) {
-        this.certificateInfos = certificateInfos;
+    public void setCertificateInfo(CertificateInfo certificateInfo) {
+        this.certificateInfo = certificateInfo;
     }
 }

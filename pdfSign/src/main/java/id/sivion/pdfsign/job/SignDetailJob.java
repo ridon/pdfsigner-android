@@ -70,7 +70,6 @@ public class SignDetailJob extends Job {
     private SignInfo signInfo;
     private List<SignInfo> signInfos = new ArrayList<>();
     private CertificateInfo certificateInfo;
-    private List<CertificateInfo> certificateInfos = new ArrayList<>();
 
     public SignDetailJob(String filePath) {
         super(new Params(1));
@@ -114,7 +113,6 @@ public class SignDetailJob extends Job {
 
                 verified = verifySignature(cmsSignedData);
                 timesTamp(cmsSignedData);
-                certificateInfo(cmsSignedData);
 
                 isVerified(verified);
 
@@ -161,6 +159,8 @@ public class SignDetailJob extends Job {
                     try {
 
                         certificate = converter.getCertificate(certificateHolder);
+                        certificateInfo(certificate);
+
                         Log.d(getClass().getSimpleName(), " verifying process :> certificate getted");
 
                         return new JcaSignerInfoVerifierBuilder(
@@ -227,18 +227,7 @@ public class SignDetailJob extends Job {
     }
 
 
-    private void certificateInfo(CMSSignedData cmsSignedData) {
-        JcaX509CertificateConverter converter = new JcaX509CertificateConverter();
-        Collection<X509CertificateHolder> certificateHolders = cmsSignedData.getCertificates().getMatches(null);
-
-        X509Certificate certificate = null;
-        for (X509CertificateHolder cer : certificateHolders){
-
-            try {
-                certificate = converter.getCertificate(cer);
-            } catch (CertificateException e) {
-                e.printStackTrace();
-            }
+    private void certificateInfo(X509Certificate certificate) {
 
             certificateInfo = new CertificateInfo();
 
@@ -274,11 +263,7 @@ public class SignDetailJob extends Job {
                 certificateInfo.setPublicKey(certificate.getPublicKey().getAlgorithm() + " (" + lengt + ")");
             }
 
-            certificateInfos.add(certificateInfo);
-
-        }
-
-        signInfo.setCertificateInfos(certificateInfos);
+        signInfo.setCertificateInfo(certificateInfo);
 
 
     }

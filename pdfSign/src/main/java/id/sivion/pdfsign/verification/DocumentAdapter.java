@@ -82,43 +82,40 @@ public class DocumentAdapter extends RecyclerView.Adapter<DocumentAdapter.ViewHo
         holder.textLocalSignDate.setText(signInfos.get(position).getSignLocalTime());
         holder.textTimestamp.setText(timestamp);
 
-        for (CertificateInfo cer : signInfos.get(position).getCertificateInfos()) {
+        CertificateInfo cer = signInfos.get(position).getCertificateInfo();
 
-            View v = LayoutInflater.from(context).inflate(R.layout.certificate_adapter, null);
+        View v = LayoutInflater.from(context).inflate(R.layout.certificate_adapter, null);
 
-            CertificateHolder cerHolder = new CertificateHolder(v);
+        CertificateHolder cerHolder = new CertificateHolder(v);
 
 
-            if (cer.isCertificateTrusted()) {
-                cerHolder.certificateTrusted.setVisibility(View.VISIBLE);
-            } else {
-                cerHolder.certificateNotTrusted.setVisibility(View.VISIBLE);
-            }
-
-            if (cer.isCertificateVerified()) {
-                cerHolder.certificateVerified.setVisibility(View.VISIBLE);
-            } else {
-                cerHolder.certificateNotVerified.setVisibility(View.VISIBLE);
-            }
-
-            if (cer.isCertificateValidity()) {
-                cerHolder.certificateValid.setVisibility(View.VISIBLE);
-            } else {
-                cerHolder.certificateNotValid.setVisibility(View.VISIBLE);
-            }
-
-            cerHolder.textSerial.setText(cer.getSerial());
-            cerHolder.textValidity.setText(cer.getValidity());
-            cerHolder.textSubject.setText(cer.getSubject());
-            cerHolder.textIssuer.setText(cer.getIssuer());
-            cerHolder.textPublicKey.setText(cer.getPublicKey());
-            cerHolder.textAlgorithm.setText(cer.getAlgorithm());
-            cerHolder.textSha1Fingerprint.setText(cer.getFingerPrint());
-
-            holder.certificates.addView(v);
-
+        if (cer.isCertificateTrusted()) {
+            cerHolder.certificateTrusted.setVisibility(View.VISIBLE);
+        } else {
+            cerHolder.certificateNotTrusted.setVisibility(View.VISIBLE);
         }
 
+        if (cer.isCertificateVerified()) {
+            cerHolder.certificateVerified.setVisibility(View.VISIBLE);
+        } else {
+            cerHolder.certificateNotVerified.setVisibility(View.VISIBLE);
+        }
+
+        if (cer.isCertificateValidity()) {
+            cerHolder.certificateValid.setVisibility(View.VISIBLE);
+        } else {
+            cerHolder.certificateNotValid.setVisibility(View.VISIBLE);
+        }
+
+        cerHolder.textSerial.setText(cer.getSerial());
+        cerHolder.textValidity.setText(cer.getValidity());
+        cerHolder.textSubject.setText(cer.getSubject());
+        cerHolder.textIssuer.setText(cer.getIssuer());
+        cerHolder.textPublicKey.setText(cer.getPublicKey());
+        cerHolder.textAlgorithm.setText(cer.getAlgorithm());
+        cerHolder.textSha1Fingerprint.setText(cer.getFingerPrint());
+
+        holder.certificates.addView(v);
 
     }
 
@@ -133,7 +130,7 @@ public class DocumentAdapter extends RecyclerView.Adapter<DocumentAdapter.ViewHo
         notifyDataSetChanged();
     }
 
-    public void clear(){
+    public void clear() {
         signInfos.clear();
         notifyDataSetChanged();
     }
