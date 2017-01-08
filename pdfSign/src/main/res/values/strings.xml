@@ -18,4 +18,31 @@
     <string name="text_certificate">Sertifikat</string>
     <string name="text_close">Tutup</string>
     <string name="text_tsa_connection_failed">Gagal terhubung dengan server timestamp.\n\nPilihan : \n1. Merubah alamat server timestamp.\n2. Menandatangani tanpa menggunakan timestamp.</string>
+
+    <string name="text_verify_pdf_file">Verifikasi dokumen PDF anda</string>
+    <string name="btn_browse_pdf">Pilih PDF</string>
+    <string name="text_dont_have_signature">Dokumen ini tidak memiliki tanda tangan digital</string>
+    <string name="back">Kembali</string>
+    <string name="text_document_information">Informasi Dokumen</string>
+    <string name="text_signature">Tandatangan</string>
+    <string name="text_sign_by">Ditandatangani Oleh</string>
+    <string name="text_location">Lokasi</string>
+    <string name="text_reason">Alasan</string>
+    <string name="text_sign_on">Ditandatangani pada</string>
+    <string name="text_timestamp">Timestamp</string>
+    <string name="text_certficate">Sertifikat</string>
+    <string name="text_serial">Serial</string>
+    <string name="text_validity">Validitas</string>
+    <string name="text_subject">Subject</string>
+    <string name="text_issuer">Issuer</string>
+    <string name="text_public_key">Public Key</string>
+    <string name="text_algoritma_ttd">Algoritma TTD</string>
+    <string name="text_sha_1_fingerprint">SHA-1 Fingerprint</string>
+    <string name="text_document_not_valid">Dokemen tidak sesuai</string>
+    <string name="text_valid">Valid</string>
+    <string name="text_not_valid">Tidak Valid</string>
+    <string name="text_certificate_not_verified">Sertifikat dicabut</string>
+    <string name="text_certificate_verified">Sertifikat terverifikasi</string>
+    <string name="text_certificate_not_trusted">Sertifikat tidak terpercaya</string>
+    <string name="text_certificate_trusted">Sertifikat terpercaya</string>
 </resources>

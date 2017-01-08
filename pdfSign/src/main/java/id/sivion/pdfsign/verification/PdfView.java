@@ -1,16 +1,24 @@
-package id.sivion.pdfsign.activity;
+package id.sivion.pdfsign.verification;
 
+import android.app.ActivityOptions;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.security.KeyChain;
+import android.security.KeyChainAliasCallback;
 import android.support.annotation.Nullable;
+import android.support.design.widget.AppBarLayout;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.CardView;
+import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,7 +26,9 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -26,37 +36,50 @@ import com.joanzapata.pdfview.PDFView;
 import com.path.android.jobqueue.JobManager;
 import com.tooltip.Tooltip;
 
+import org.apache.pdfbox.pdmodel.PDDocument;
+
 import java.io.File;
+import java.io.IOException;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import butterknife.OnClick;
 import de.greenrobot.event.EventBus;
 import id.sivion.pdfsign.DroidSignerApplication;
 import id.sivion.pdfsign.R;
+import id.sivion.pdfsign.job.CertificateChainJob;
 import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
 import id.sivion.pdfsign.job.JobStatus;
 import id.sivion.pdfsign.utils.TsaClient;
 
 /**
- * Created by miftakhul on 20/10/16.
+ * Created by miftakhul on 01/12/16.
  */
 
-public class SignPdfActivity extends AppCompatActivity {
+public class PdfView extends AppCompatActivity implements KeyChainAliasCallback {
 
-    @BindView(R.id.pdfView)
+    @BindView(R.id.pdf_view)
     PDFView pdfView;
-    @BindView(R.id.btn_sign)
-    Button btnSign;
-    @BindView(R.id.card_sign)
-    CardView cardSign;
+    @BindView(R.id.toolbar)
+    Toolbar toolbar;
+    @BindView(R.id.appbar)
+    AppBarLayout appbar;
+    @BindView(R.id.icon_info)
+    ImageView iconInfo;
+    @BindView(R.id.signature_info)
+    RelativeLayout signatureInfo;
 
-    private DroidSignerApplication app;
-    private JobManager jobManager;
+    private Button btnBrowseCertificate;
+    private TextView textSubjectdn;
+    private TextView textIssuer;
+    private TextView textExpire;
+    private LinearLayout layoutCertificateInfo;
+    private Button btnNext;
+
+    private SharedPreferences preferences;
     private ProgressDialog progressDialog;
-
-    private AlertDialog signAlert;
+    private JobManager jobManager;
+    private AlertDialog signDialog, requestSignDialog;
 
     private String pdfPath;
     private String name, reason, location;
@@ -65,27 +88,127 @@ public class SignPdfActivity extends AppCompatActivity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.sign_pdf_activity);
+        setContentView(R.layout.pdf_view);
         ButterKnife.bind(this);
 
-        app = DroidSignerApplication.getInstance();
-        jobManager = app.getJobManager();
+        setSupportActionBar(toolbar);
+
+        pdfPath = getIntent().getStringExtra("pdfPath");
 
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage(getString(R.string.text_wait));
         progressDialog.setCancelable(false);
 
-        pdfPath = getIntent().getStringExtra("pdfPath");
+        preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        jobManager = DroidSignerApplication.getInstance().getJobManager();
 
+
+        // receive file frome other application
+        if (getIntent().getAction() == Intent.ACTION_VIEW){
+            pdfPath = getIntent().getData().getPath();
+        }else if (getIntent().getAction() == Intent.ACTION_SEND) {
+            Uri uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+            pdfPath = uri.getPath();
+        }
+
+        if (pdfPath != null) {
+            openPdf(pdfPath);
+        }
+
+        setupSignAlertDialog();
+
+    }
+
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        EventBus.getDefault().register(this);
+    }
+
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        EventBus.getDefault().unregister(this);
+    }
+
+
+    @Override
+    public void alias(String alias) {
+        preferences.edit().putString("alias", alias).apply();
+
+        jobManager.addJobInBackground(new CertificateChainJob(alias));
+    }
+
+
+    private void openPdf(String pdfPath){
         File pdfFile = new File(pdfPath);
+
         pdfView.fromFile(pdfFile)
                 .defaultPage(1)
                 .load();
 
-        setupSignAlertDialog();
+        checkSignature(pdfFile);
     }
 
-    private void setupSignAlertDialog() {
+    public void showSignatureInfo(View view) {
+        Intent i = new Intent(this, SignDetail.class);
+        i.putExtra("pdfPath", pdfPath);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP){
+            startActivity(i, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
+        }else {
+            startActivity(i);
+        }
+    }
+
+    private void checkSignature(File pdfFile){
+        try {
+            PDDocument pdDocument = PDDocument.load(pdfFile);
+            if (!pdDocument.getSignatureDictionaries().isEmpty()){
+                signatureInfo.setVisibility(View.VISIBLE);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void requestSign(View view){
+        View viewLayout = LayoutInflater.from(this).inflate(R.layout.certificate_popup, null);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(viewLayout);
+
+        requestSignDialog = builder.create();
+
+        textSubjectdn = (TextView) viewLayout.findViewById(R.id.text_subjectdn);
+        textIssuer = (TextView) viewLayout.findViewById(R.id.text_issuer);
+        textExpire = (TextView) viewLayout.findViewById(R.id.text_expire);
+        layoutCertificateInfo = (LinearLayout) viewLayout.findViewById(R.id.layout_certificate_info);
+        btnNext = (Button) viewLayout.findViewById(R.id.btn_next_step);
+
+        String getAlias = preferences.getString("alias", "");
+
+        if (!getAlias.equalsIgnoreCase("")){
+            jobManager.addJobInBackground(new CertificateChainJob(getAlias));
+        }
+
+        btnNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                requestSignDialog.dismiss();
+                signDialog.show();
+
+            }
+        });
+
+        requestSignDialog.show();
+
+    }
+
+    public void setupSignAlertDialog() {
 
         View view = LayoutInflater.from(this).inflate(R.layout.popup_sign, null, false);
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -122,8 +245,8 @@ public class SignPdfActivity extends AppCompatActivity {
         btnTsaHelp.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                int backgroundColor = ContextCompat.getColor(SignPdfActivity.this, R.color.colorGrey);
-                int textColor = ContextCompat.getColor(SignPdfActivity.this, android.R.color.white);
+                int backgroundColor = ContextCompat.getColor(PdfView.this, R.color.colorGrey);
+                int textColor = ContextCompat.getColor(PdfView.this, android.R.color.white);
 
                 new Tooltip.Builder(btnTsaHelp).setText("Waktu saat ini yang didapat dari server")
                         .setBackgroundColor(backgroundColor)
@@ -149,60 +272,19 @@ public class SignPdfActivity extends AppCompatActivity {
             }
         });
 
-        signAlert = builder.create();
+
+        signDialog = builder.create();
 
     }
 
-    @OnClick(R.id.btn_sign)
-    public void onButtonClick(Button button) {
-        signAlert.show();
-    }
 
-    @Override
-    public void onStart() {
-        super.onStart();
-        EventBus.getDefault().register(this);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        EventBus.getDefault().unregister(this);
-    }
-
-
-    public void onEventMainThread(DocumentSignPdfJob.DocumentSignEvent event) {
-
-        if (event.getStatus() == JobStatus.ADDED) {
-            progressDialog.show();
-
-        } else if (event.getStatus() == JobStatus.SUCCESS) {
-            progressDialog.dismiss();
-            dialogSuccess(event.getFilePath());
-
-        } else if (event.getStatus() == JobStatus.ABORTED) {
-            progressDialog.dismiss();
-            Toast.makeText(this, "Gagal menandatangani dokumen", Toast.LENGTH_SHORT).show();
-        }
-
-    }
-
-    public void onEventMainThread(CertificateCheckJob.CheckEvent event) {
-        if (event.getStatus() == CertificateCheckJob.CheckEvent.VALID) {
-            jobManager.addJobInBackground(DocumentSignPdfJob.
-                    newInstance(pdfPath,
-                            name,
-                            reason,
-                            location, useTsa));
+    public void browseCertificate(View view){
+        if (Build.VERSION.SDK_INT <= 22) {
+            Log.d(getClass().getSimpleName(), "loli");
+            KeyChain.choosePrivateKeyAlias(this, this, null, null, null, -1, null);
         } else {
-            dialogCertificateInValid();
-        }
-    }
-
-    public void onEventMainThread(TsaClient.TsaEvent event) {
-        if (event.getStatus() == TsaClient.TsaEvent.FAILED) {
-
-            dialogTsaFailed();
+            Log.d(getClass().getSimpleName(), "masrs");
+            KeyChain.choosePrivateKeyAlias(this, this, null, null, null, null);
         }
     }
 
@@ -282,6 +364,59 @@ public class SignPdfActivity extends AppCompatActivity {
         });
 
         dialog.show();
+    }
+
+
+    public void onEventMainThread(DocumentSignPdfJob.DocumentSignEvent event) {
+
+        if (event.getStatus() == JobStatus.ADDED) {
+            progressDialog.show();
+
+        } else if (event.getStatus() == JobStatus.SUCCESS) {
+            progressDialog.dismiss();
+            dialogSuccess(event.getFilePath());
+
+        } else if (event.getStatus() == JobStatus.ABORTED) {
+            progressDialog.dismiss();
+            Toast.makeText(this, "Gagal menandatangani dokumen", Toast.LENGTH_SHORT).show();
+        }
+
+    }
+
+
+    public void onEventMainThread(CertificateChainJob.CertificateChainEvent event) {
+        if (event.getStatus() == JobStatus.SUCCESS) {
+
+            textSubjectdn.setText(event.getSubjectDN());
+            textIssuer.setText(event.getIssuer());
+            textExpire.setText(event.getExpire());
+
+            Log.d(getClass().getSimpleName(), " subject " + event.getSubjectDN() + " serial number " + event.getSerialNumber().toString());
+
+            layoutCertificateInfo.setVisibility(View.VISIBLE);
+            btnNext.setEnabled(true);
+        }
+
+    }
+
+
+    public void onEventMainThread(CertificateCheckJob.CheckEvent event) {
+        if (event.getStatus() == CertificateCheckJob.CheckEvent.VALID) {
+            jobManager.addJobInBackground(DocumentSignPdfJob.
+                    newInstance(pdfPath,
+                            name,
+                            reason,
+                            location, useTsa));
+        } else {
+            dialogCertificateInValid();
+        }
+    }
+
+    public void onEventMainThread(TsaClient.TsaEvent event) {
+        if (event.getStatus() == TsaClient.TsaEvent.FAILED) {
+
+            dialogTsaFailed();
+        }
     }
 
 

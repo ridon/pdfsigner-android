@@ -27,7 +27,7 @@ import android.widget.Toast;
 
 import com.path.android.jobqueue.JobManager;
 
-import butterknife.Bind;
+import butterknife.BindView;
 import butterknife.ButterKnife;
 import de.greenrobot.event.EventBus;
 import id.sivion.pdfsign.DroidSignerApplication;
@@ -43,19 +43,19 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
     private static final int REQUEST_CODE_BROWSE_PDF = 20;
 
 
-    @Bind(R.id.toolbar)
+    @BindView(R.id.toolbar)
     Toolbar toolbar;
-    @Bind(R.id.btn_browse_certificate)
+    @BindView(R.id.btn_browse_certificate)
     Button btnBrowseCertificate;
-    @Bind(R.id.text_subjectdn)
+    @BindView(R.id.text_subjectdn)
     TextView textSubjectdn;
-    @Bind(R.id.text_issuer)
+    @BindView(R.id.text_issuer)
     TextView textIssuer;
-    @Bind(R.id.text_expire)
+    @BindView(R.id.text_expire)
     TextView textExpire;
-    @Bind(R.id.layout_certificate_info)
+    @BindView(R.id.layout_certificate_info)
     LinearLayout layoutCertificateInfo;
-    @Bind(R.id.btn_browse_pdf)
+    @BindView(R.id.btn_browse_pdf)
     Button btnNext;
 
     private SharedPreferences preferences;
