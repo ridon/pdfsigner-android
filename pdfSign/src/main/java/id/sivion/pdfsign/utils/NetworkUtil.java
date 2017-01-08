@@ -14,4 +14,5 @@ public class NetworkUtil {
         return cm.getActiveNetworkInfo() != null;
     }
 
+
 }
