@@ -22,7 +22,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.joanzapata.pdfview.PDFView;
+import com.github.barteksc.pdfviewer.PDFView;
+import com.github.barteksc.pdfviewer.listener.OnErrorListener;
 import com.path.android.jobqueue.JobManager;
 import com.tooltip.Tooltip;
 
@@ -80,9 +81,30 @@ public class SignPdfActivity extends AppCompatActivity {
         File pdfFile = new File(pdfPath);
         pdfView.fromFile(pdfFile)
                 .defaultPage(1)
+                .onError(new OnErrorListener() {
+                    @Override
+                    public void onError(Throwable t) {
+                        failedOpenPdf();
+                    }
+                })
                 .load();
 
         setupSignAlertDialog();
+    }
+
+    private void failedOpenPdf() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(R.string.app_name);
+        builder.setIcon(R.mipmap.ic_launcher);
+        builder.setMessage(R.string.text_failed_open_pdf);
+        builder.setCancelable(false);
+        builder.setPositiveButton(R.string.close, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                onBackPressed();
+            }
+        });
+        builder.show();
     }
 
     private void setupSignAlertDialog() {

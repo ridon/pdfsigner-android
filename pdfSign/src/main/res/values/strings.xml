@@ -45,4 +45,5 @@
     <string name="text_certificate_verified">Sertifikat terverifikasi</string>
     <string name="text_certificate_not_trusted">Sertifikat tidak terpercaya</string>
     <string name="text_certificate_trusted">Sertifikat terpercaya</string>
+    <string name="text_failed_open_pdf">Dokumen pdf tidak bisa dibuka</string>
 </resources>

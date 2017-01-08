@@ -133,6 +133,11 @@ public class DocumentAdapter extends RecyclerView.Adapter<DocumentAdapter.ViewHo
         notifyDataSetChanged();
     }
 
+    public void clear(){
+        signInfos.clear();
+        notifyDataSetChanged();
+    }
+
 
     class ViewHolder extends RecyclerView.ViewHolder {
 
