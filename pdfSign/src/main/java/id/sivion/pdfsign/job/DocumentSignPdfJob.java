@@ -79,7 +79,7 @@ public class DocumentSignPdfJob extends Job {
     }
 
     public DocumentSignPdfJob(){
-        super(new Params(1).requireNetwork().persist());
+        super(new Params(1));
     }
 
     @Override

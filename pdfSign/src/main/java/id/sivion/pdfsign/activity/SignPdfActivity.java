@@ -38,6 +38,7 @@ import id.sivion.pdfsign.R;
 import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
 import id.sivion.pdfsign.job.JobStatus;
+import id.sivion.pdfsign.utils.NetworkUtil;
 import id.sivion.pdfsign.utils.TsaClient;
 
 /**
@@ -211,6 +212,11 @@ public class SignPdfActivity extends AppCompatActivity {
 
     public void onEventMainThread(CertificateCheckJob.CheckEvent event) {
         if (event.getStatus() == CertificateCheckJob.CheckEvent.VALID) {
+            if (useTsa && !NetworkUtil.isConnected(SignPdfActivity.this)) {
+                dialogNoInternet();
+                return;
+            }
+
             jobManager.addJobInBackground(DocumentSignPdfJob.
                     newInstance(pdfPath,
                             name,
@@ -257,6 +263,19 @@ public class SignPdfActivity extends AppCompatActivity {
         builder.show();
     }
 
+    private void dialogNoInternet(){
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setIcon(R.mipmap.ic_launcher);
+        builder.setTitle(R.string.app_name);
+        builder.setMessage(R.string.text_no_internet);
+        builder.setPositiveButton(R.string.close, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.dismiss();
+            }
+        });
+        builder.show();
+    }
 
     private void dialogSuccess(final String filePath) {
 
