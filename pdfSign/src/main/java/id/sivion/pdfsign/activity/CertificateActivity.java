@@ -34,6 +34,7 @@ import id.sivion.pdfsign.DroidSignerApplication;
 import id.sivion.pdfsign.R;
 import id.sivion.pdfsign.job.CertificateChainJob;
 import id.sivion.pdfsign.job.JobStatus;
+import id.sivion.pdfsign.utils.UriUtil;
 
 /**
  * Created by miftakhul on 08/09/16.
@@ -152,7 +153,9 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
         if (uri.getScheme().equalsIgnoreCase("file")){
             next(uri.getPath());
         }else if (uri.getScheme().equalsIgnoreCase("content")){
-
+            String path = UriUtil.getPath(this, uri);
+            Log.d(getClass().getSimpleName(), " converted uri "+path);
+            next(path);
         }
     }
 
