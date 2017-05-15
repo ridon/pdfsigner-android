@@ -61,7 +61,7 @@ import id.sivion.pdfsign.utils.TsaClient;
  */
 public class DocumentSignPdfJob extends Job {
 
-    private static String DIRECTORY_NAME= "Signed_documents";
+    private static String DIRECTORY_NAME= "pdf bertandatangan";
     private final Logger log = LoggerFactory.getLogger(getClass());
     private String filePath, reason, location, name;
     private TsaClient tsaClient;

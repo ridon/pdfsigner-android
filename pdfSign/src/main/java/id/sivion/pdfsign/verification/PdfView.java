@@ -22,6 +22,8 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
@@ -29,6 +31,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -38,15 +41,23 @@ import com.path.android.jobqueue.JobManager;
 import com.tooltip.Tooltip;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.spongycastle.asn1.x500.RDN;
+import org.spongycastle.asn1.x500.X500Name;
+import org.spongycastle.asn1.x500.style.BCStyle;
+import org.spongycastle.asn1.x500.style.IETFUtils;
+import org.spongycastle.cert.jcajce.JcaX509CertificateHolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.cert.CertificateEncodingException;
+import java.security.cert.X509Certificate;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import de.greenrobot.event.EventBus;
 import id.sivion.pdfsign.DroidSignerApplication;
 import id.sivion.pdfsign.R;
+import id.sivion.pdfsign.activity.SignPdfActivity;
 import id.sivion.pdfsign.job.CertificateChainJob;
 import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
@@ -71,6 +82,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     @BindView(R.id.signature_info)
     RelativeLayout signatureInfo;
 
+    private TextView editSignatureName;
     private Button btnBrowseCertificate;
     private TextView textSubjectdn;
     private TextView textIssuer;
@@ -255,11 +267,33 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
         final LinearLayout layoutOptions = (LinearLayout) view.findViewById(R.id.layout_sign_options);
         TextView signOptions = (TextView) view.findViewById(R.id.sign_options);
-        final EditText editName = (EditText) view.findViewById(R.id.edit_name);
-        final EditText editReason = (EditText) view.findViewById(R.id.edit_reason);
+        final TextView editName = (TextView) view.findViewById(R.id.edit_name);
         final EditText editLocation = (EditText) view.findViewById(R.id.edit_location);
+        final Spinner spinReason = (Spinner) view.findViewById(R.id.spin_reason);
         CheckBox checkUseTsa = (CheckBox) view.findViewById(R.id.check_use_tsa);
         final Button btnTsaHelp = (Button) view.findViewById(R.id.btn_tsa_help);
+        editSignatureName = editName;
+
+        String[] reasons = new String[]{"Menyetujui Dokumen","Telah membaca dan mengerti Dokumen","Menyatakan Kebenaran Informasi"};
+        final ArrayAdapter<String> reasonAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, reasons);
+        spinReason.setAdapter(reasonAdapter);
+
+        int selectedReason = preferences.getInt("selected_reason", 0);
+        spinReason.setSelection(selectedReason);
+
+        spinReason.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                SharedPreferences.Editor edit = preferences.edit();
+                edit.putInt("selected_reason", position);
+                edit.commit();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
 
         signOptions.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -303,11 +337,13 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
             public void onClick(DialogInterface dialogInterface, int i) {
 
                 name = editName.getText().toString();
-                reason = editReason.getText().toString();
                 location = editLocation.getText().toString();
 
-                jobManager.addJobInBackground(new CertificateCheckJob());
-
+                jobManager.addJobInBackground(DocumentSignPdfJob.
+                        newInstance(pdfPath,
+                                name,
+                                spinReason.getSelectedItem().toString(),
+                                location, useTsa));
             }
         });
 
@@ -442,11 +478,22 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
     public void onEventMainThread(CertificateCheckJob.CheckEvent event) {
         if (event.getStatus() == CertificateCheckJob.CheckEvent.VALID) {
-            jobManager.addJobInBackground(DocumentSignPdfJob.
-                    newInstance(pdfPath,
-                            name,
-                            reason,
-                            location, useTsa));
+            if (useTsa && !NetworkUtil.isConnected(this)) {
+                dialogNoInternet();
+                return;
+            }
+
+            signDialog.show();
+
+            try {
+                X509Certificate cert = (X509Certificate) event.getObject();
+                X500Name x500Name = new JcaX509CertificateHolder(cert).getSubject();
+                RDN cn = x500Name.getRDNs(BCStyle.CN)[0];
+
+                editSignatureName.setText(IETFUtils.valueToString(cn.getFirst().getValue()));
+            } catch (CertificateEncodingException e) {
+                e.printStackTrace();
+            }
         } else {
             dialogCertificateInValid();
         }

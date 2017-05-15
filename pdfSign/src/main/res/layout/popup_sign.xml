@@ -24,35 +24,33 @@
         android:id="@+id/layout_sign_options"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:visibility="gone">
+        android:orientation="vertical">
 
-        <EditText
+        <TextView
             android:id="@+id/edit_name"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="35dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_stroke"
             android:hint="Nama"
-            android:padding="8dp" />
-
-        <EditText
-            android:id="@+id/edit_reason"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:background="@drawable/edit_stroke"
-            android:hint="Alasan"
+            android:inputType="none"
             android:padding="8dp" />
 
         <EditText
             android:id="@+id/edit_location"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="35dp"
             android:layout_marginTop="8dp"
             android:background="@drawable/edit_stroke"
             android:hint="Lokasi"
             android:padding="8dp" />
+
+        <Spinner
+            android:id="@+id/spin_reason"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/edit_stroke"></Spinner>
 
     </LinearLayout>
 

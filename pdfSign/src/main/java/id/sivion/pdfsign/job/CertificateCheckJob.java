@@ -37,7 +37,7 @@ public class CertificateCheckJob extends Job {
 
         try {
             cert.checkValidity();
-            EventBus.getDefault().post(new CheckEvent(CheckEvent.VALID));
+            EventBus.getDefault().post(new CheckEvent(CheckEvent.VALID, cert));
         }catch (Exception e){
             EventBus.getDefault().post(new CheckEvent(CheckEvent.INVALID));
         }
@@ -60,13 +60,23 @@ public class CertificateCheckJob extends Job {
         public static int INVALID = 100;
 
         private int status;
+        private Object object;
 
         public CheckEvent(int status) {
             this.status = status;
         }
 
+        public CheckEvent(int status, Object object) {
+            this.status = status;
+            this.object = object;
+        }
+
         public int getStatus() {
             return status;
+        }
+
+        public Object getObject() {
+            return object;
         }
     }
 
