@@ -1,5 +1,6 @@
 package id.sivion.pdfsign.job;
 
+import android.net.Uri;
 import android.util.Log;
 
 import com.path.android.jobqueue.Job;
@@ -7,6 +8,7 @@ import com.path.android.jobqueue.Params;
 
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.pdfbox.cos.COSDictionary;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.cos.COSString;
@@ -66,15 +68,15 @@ import id.sivion.pdfsign.verification.common.CRLVerifier;
 
 public class SignDetailJob extends Job {
 
-    private String filePath;
+    private Uri uri;
     private SignInfo signInfo;
     private List<SignInfo> signInfos = new ArrayList<>();
     private CertificateInfo certificateInfo;
 
-    public SignDetailJob(String filePath) {
+    public SignDetailJob(Uri uri) {
         super(new Params(1));
 
-        this.filePath = filePath;
+        this.uri = uri;
     }
 
     @Override
@@ -85,13 +87,13 @@ public class SignDetailJob extends Job {
     @Override
     public void onRun() throws Throwable {
         boolean verified = false;
-        File signedPdfFile = new File(filePath);
-
-        Log.d(getClass().getSimpleName(), " verifying process :> pdf path " + filePath);
+        byte[] pdfFileByte ;
+        InputStream signedPdfFile = DroidSignerApplication.getInstance().getContentResolver().openInputStream(uri);
+        pdfFileByte = IOUtils.toByteArray(signedPdfFile);
 
         PDDocument document = null;
         try {
-            document = PDDocument.load(signedPdfFile);
+            document = PDDocument.load(pdfFileByte);
 
             if (document.getSignatureDictionaries().isEmpty()) {
                 EventBus.getDefault().post(new SignDetailEvent(SignDetailEvent.NO_SIGNER, null));
@@ -105,9 +107,7 @@ public class SignDetailJob extends Job {
                 COSDictionary sigDic = sig.getCOSObject();
                 COSString content = (COSString) sigDic.getDictionaryObject(COSName.CONTENTS);
 
-                FileInputStream fis = new FileInputStream(signedPdfFile);
-                byte[] signedContent = sig.getSignedContent(fis);
-                fis.close();
+                byte[] signedContent = sig.getSignedContent(pdfFileByte);
 
                 CMSSignedData cmsSignedData = new CMSSignedData(new CMSProcessableByteArray(signedContent), content.getBytes());
 

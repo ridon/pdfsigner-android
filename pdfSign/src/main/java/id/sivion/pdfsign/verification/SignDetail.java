@@ -2,6 +2,7 @@ package id.sivion.pdfsign.verification;
 
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -87,7 +88,8 @@ public class SignDetail extends AppCompatActivity {
         super.onStart();
         EventBus.getDefault().register(this);
         documentAdapter.clear();
-        jobManager.addJobInBackground(new SignDetailJob(getIntent().getStringExtra("pdfPath").toString()));
+        Uri uri  =  getIntent().getParcelableExtra("pdfUri");
+        jobManager.addJobInBackground(new SignDetailJob(uri));
     }
 
 

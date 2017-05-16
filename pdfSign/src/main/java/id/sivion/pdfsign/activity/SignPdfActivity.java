@@ -76,7 +76,7 @@ public class SignPdfActivity extends AppCompatActivity {
     private ProgressDialog progressDialog;
     private AlertDialog signAlert;
 
-    private String pdfPath;
+    private Uri pdfUri;
     private String name, reason, location;
     private boolean useTsa = true;
 
@@ -94,10 +94,9 @@ public class SignPdfActivity extends AppCompatActivity {
         progressDialog.setMessage(getString(R.string.text_wait));
         progressDialog.setCancelable(false);
 
-        pdfPath = getIntent().getStringExtra("pdfPath");
+        pdfUri = getIntent().getParcelableExtra("pdfUri");
 
-        File pdfFile = new File(pdfPath);
-        pdfView.fromFile(pdfFile)
+        pdfView.fromUri(pdfUri)
                 .defaultPage(1)
                 .onError(new OnErrorListener() {
                     @Override
@@ -206,7 +205,7 @@ public class SignPdfActivity extends AppCompatActivity {
                 location = editLocation.getText().toString();
 
                 jobManager.addJobInBackground(DocumentSignPdfJob.
-                        newInstance(pdfPath,
+                        newInstance(pdfUri,
                                 name,
                                 spinReason.getSelectedItem().toString(),
                                 location, useTsa));

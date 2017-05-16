@@ -47,13 +47,13 @@ public class VerifyPdfActivity extends AppCompatActivity {
                     "schema " + uri.getScheme() + "\n" +
                     "path " + uri.getPath());
 
-            uriAction(uri);
+            showPdf(uri);
 
         }
     }
 
     public void browseFile(View view) {
-        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         i.setType("application/pdf");
         i.addCategory(Intent.CATEGORY_OPENABLE);
         try {
@@ -64,43 +64,11 @@ public class VerifyPdfActivity extends AppCompatActivity {
     }
 
 
-    private void uriAction(Uri uri) {
-
-        if (uri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
-            if (isValidFile(uri)) {
-                showPdf(uri.getPath());
-            } else {
-                alertFileNotValid.show();
-            }
-        } else if (uri.getScheme().equals(ContentResolver.SCHEME_CONTENT) && isValidFile(uri)) {
-
-        }
-
-    }
-
-
-    private void showPdf(String pdfPath) {
+    private void showPdf(Uri uri) {
         Intent i = new Intent(this, PdfView.class);
-        i.putExtra("pdfPath", pdfPath);
+        i.putExtra("pdfUri", uri);
+        startActivity(i);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            startActivity(i, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
-        } else {
-            startActivity(i);
-        }
-    }
-
-    private boolean isValidFile(Uri uri) {
-        String mimeType;
-
-        if (uri.getScheme().equals(ContentResolver.SCHEME_FILE)) {
-            mimeType = MimeTypeMap.getFileExtensionFromUrl(uri.getPath());
-            return mimeType.equalsIgnoreCase("pdf") ? true : false;
-        } else if (uri.getScheme().equals(ContentResolver.SCHEME_CONTENT)) {
-
-        }
-
-        return false;
     }
 
     private void setupAlertFileNotValid() {

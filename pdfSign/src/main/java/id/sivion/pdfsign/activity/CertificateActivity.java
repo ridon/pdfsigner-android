@@ -138,7 +138,7 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
 
 
     public void browseFile(View view){
-        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
         i.setType("application/pdf");
         i.addCategory(Intent.CATEGORY_OPENABLE);
         try {
@@ -149,21 +149,10 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
     }
 
 
-    private void uriAction(Uri uri){
-        if (uri.getScheme().equalsIgnoreCase("file")){
-            next(uri.getPath());
-        }else if (uri.getScheme().equalsIgnoreCase("content")){
-            String path = UriUtil.getPath(this, uri);
-            Log.d(getClass().getSimpleName(), " converted uri "+path);
-            next(path);
-        }
-    }
-
-
-    private void next(String pdfPath){
+    private void next(Uri uri){
 
         Intent i = new Intent(this, SignPdfActivity.class);
-        i.putExtra("pdfPath", pdfPath);
+        i.putExtra("pdfUri", uri);
         startActivity(i);
     }
 
@@ -272,11 +261,8 @@ public class CertificateActivity extends AppCompatActivity implements KeyChainAl
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_CODE_BROWSE_PDF && resultCode == RESULT_OK){
             Uri uri = data.getData();
-            Log.d(getClass().getSimpleName()," log file "+uri.toString()+"\n" +
-                    "schema "+uri.getScheme()+"\n" +
-                    "path "+uri.getPath());
 
-            uriAction(uri);
+            next(uri);
 
         }
     }

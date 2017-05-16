@@ -49,6 +49,7 @@ import org.spongycastle.cert.jcajce.JcaX509CertificateHolder;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
 
@@ -95,7 +96,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     private JobManager jobManager;
     private AlertDialog signDialog, requestSignDialog;
 
-    private String pdfPath;
+    private Uri pdfUri;
     private String name, reason, location;
     private boolean useTsa = true;
 
@@ -107,7 +108,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
         setSupportActionBar(toolbar);
 
-        pdfPath = getIntent().getStringExtra("pdfPath");
+        pdfUri = getIntent().getParcelableExtra("pdfUri");
 
         progressDialog = new ProgressDialog(this);
         progressDialog.setMessage(getString(R.string.text_wait));
@@ -119,14 +120,14 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
         // receive file frome other application
         if (getIntent().getAction() == Intent.ACTION_VIEW){
-            pdfPath = getIntent().getData().getPath();
+            pdfUri = getIntent().getData();
         }else if (getIntent().getAction() == Intent.ACTION_SEND) {
-            Uri uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
-            pdfPath = uri.getPath();
+            pdfUri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
+
         }
 
-        if (pdfPath != null) {
-            openPdf(pdfPath);
+        if (pdfUri != null) {
+            openPdf(pdfUri);
         }
 
         setupSignAlertDialog();
@@ -156,10 +157,9 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     }
 
 
-    private void openPdf(String pdfPath){
-        File pdfFile = new File(pdfPath);
+    private void openPdf(Uri uri){
 
-        pdfView.fromFile(pdfFile)
+        pdfView.fromUri(uri)
                 .defaultPage(1)
                 .onError(new OnErrorListener() {
                     @Override
@@ -169,7 +169,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
                 })
                 .load();
 
-        checkSignature(pdfFile);
+        checkSignature(uri);
 
     }
 
@@ -193,21 +193,17 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
         if (NetworkUtil.isConnected(this)) {
 
             Intent i = new Intent(this, SignDetail.class);
-            i.putExtra("pdfPath", pdfPath);
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                startActivity(i, ActivityOptions.makeSceneTransitionAnimation(this).toBundle());
-            } else {
-                startActivity(i);
-            }
+            i.putExtra("pdfUri", pdfUri);
+            startActivity(i);
         }else {
             dialogNoInternet();
         }
     }
 
-    private void checkSignature(File pdfFile){
+    private void checkSignature(Uri uri){
         try {
-            PDDocument pdDocument = PDDocument.load(pdfFile);
+            InputStream documentUri = getContentResolver().openInputStream(uri);
+            PDDocument pdDocument = PDDocument.load(documentUri);
             if (!pdDocument.getSignatureDictionaries().isEmpty()){
                 signatureInfo.setVisibility(View.VISIBLE);
             }
@@ -240,7 +236,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
             @Override
             public void onClick(View view) {
                 requestSignDialog.dismiss();
-                signDialog.show();
+                jobManager.addJobInBackground(new CertificateCheckJob());
 
             }
         });
@@ -340,7 +336,7 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
                 location = editLocation.getText().toString();
 
                 jobManager.addJobInBackground(DocumentSignPdfJob.
-                        newInstance(pdfPath,
+                        newInstance(pdfUri,
                                 name,
                                 spinReason.getSelectedItem().toString(),
                                 location, useTsa));

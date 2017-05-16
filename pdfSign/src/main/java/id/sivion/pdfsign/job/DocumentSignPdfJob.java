@@ -1,8 +1,11 @@
 package id.sivion.pdfsign.job;
 
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Environment;
 import android.preference.PreferenceManager;
+import android.provider.OpenableColumns;
 import android.security.KeyChain;
 import android.util.Log;
 
@@ -61,15 +64,16 @@ import id.sivion.pdfsign.utils.TsaClient;
  */
 public class DocumentSignPdfJob extends Job {
 
-    private static String DIRECTORY_NAME= "pdf bertandatangan";
+    private static String DIRECTORY_NAME = "pdf bertandatangan";
     private final Logger log = LoggerFactory.getLogger(getClass());
-    private String filePath, reason, location, name;
+    private String reason, location, name;
+    private Uri uri;
     private TsaClient tsaClient;
     private boolean useTsa;
 
-    public static DocumentSignPdfJob newInstance(String filePath, String name, String reason, String location, boolean useTsa) {
+    public static DocumentSignPdfJob newInstance(Uri uri, String name, String reason, String location, boolean useTsa) {
         DocumentSignPdfJob job = new DocumentSignPdfJob();
-        job.filePath = filePath;
+        job.uri = uri;
         job.name = name;
         job.reason = reason;
         job.location = location;
@@ -78,13 +82,13 @@ public class DocumentSignPdfJob extends Job {
         return job;
     }
 
-    public DocumentSignPdfJob(){
+    public DocumentSignPdfJob() {
         super(new Params(1));
     }
 
     @Override
     public void onAdded() {
-        EventBus.getDefault().post(new DocumentSignEvent("", filePath, JobStatus.ADDED));
+        EventBus.getDefault().post(new DocumentSignEvent("", uri.getPath(), JobStatus.ADDED));
     }
 
     @Override
@@ -100,24 +104,33 @@ public class DocumentSignPdfJob extends Job {
             Assert.assertNotNull(privateKey);
             Assert.assertNotNull(cert);
 
-            File documentPdf = new File(filePath);
-            String documentPdfName = documentPdf.getName();
+            byte[] pdfFileByte ;
+            InputStream signedPdfFile = DroidSignerApplication.getInstance().getContentResolver().openInputStream(uri);
+            pdfFileByte = IOUtils.toByteArray(signedPdfFile);
+
+
+            Cursor cursor = DroidSignerApplication.getInstance().getContentResolver().query(uri, null, null, null, null);
+            int fileNameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+            cursor.moveToFirst();
+
+            String fileName = cursor.getString(fileNameIndex);
+            cursor.close();
 
             //create directory
-            File directory = new File(Environment.getExternalStorageDirectory()+File.separator+ DIRECTORY_NAME);
-            if (!directory.exists()){
-                if (directory.mkdir()){
+            File directory = new File(Environment.getExternalStorageDirectory() + File.separator + DIRECTORY_NAME);
+            if (!directory.exists()) {
+                if (directory.mkdir()) {
                     Log.d(getClass().getSimpleName(), " cannot create directory");
                 }
             }
 
-            String substring = documentPdfName.substring(0, documentPdfName.lastIndexOf("."));
+            String substring = fileName.substring(0, fileName.lastIndexOf("."));
 
             File outputDocument = new File(directory, substring + "_signed.pdf");
             FileOutputStream fos = new FileOutputStream(outputDocument);
 
             // load document
-            PDDocument doc = PDDocument.load(documentPdf);
+            PDDocument doc = PDDocument.load(pdfFileByte);
 
             // create signature dictionary
             PDSignature signature = new PDSignature();
@@ -159,7 +172,7 @@ public class DocumentSignPdfJob extends Job {
     @Override
     protected boolean shouldReRunOnThrowable(Throwable throwable) {
         log.error(throwable.getMessage(), throwable);
-        EventBus.getDefault().post(new DocumentSignEvent("",filePath , JobStatus.SYSTEM_ERROR));
+        EventBus.getDefault().post(new DocumentSignEvent("", uri.getPath(), JobStatus.SYSTEM_ERROR));
         return false;
     }
 
@@ -196,7 +209,7 @@ public class DocumentSignPdfJob extends Job {
 
                 CMSSignedData sigData = gen.generate(input, false);
 
-                if (tsaClient != null){
+                if (tsaClient != null) {
                     Log.d(getClass().getSimpleName(), "using tsa");
                     sigData = signTimeStamps(sigData);
                 }
@@ -204,18 +217,18 @@ public class DocumentSignPdfJob extends Job {
                 return sigData.getEncoded();
             } catch (Exception e) {
                 Log.e(getClass().getName(), e.getMessage(), e);
-                EventBus.getDefault().post(new DocumentSignEvent("",null , JobStatus.ABORTED));
+                EventBus.getDefault().post(new DocumentSignEvent("", null, JobStatus.ABORTED));
             }
 
             throw new RuntimeException("Problem while preparing signature");
         }
 
 
-        private CMSSignedData signTimeStamps(CMSSignedData signedData) throws IOException, TSPException{
+        private CMSSignedData signTimeStamps(CMSSignedData signedData) throws IOException, TSPException {
             SignerInformationStore signerStore = signedData.getSignerInfos();
             List<SignerInformation> newSigners = new ArrayList<SignerInformation>();
 
-            for (SignerInformation signer : signerStore.getSigners()){
+            for (SignerInformation signer : signerStore.getSigners()) {
                 newSigners.add(signTimeStamp(signer));
             }
 
@@ -223,11 +236,11 @@ public class DocumentSignPdfJob extends Job {
         }
 
 
-        private SignerInformation signTimeStamp(SignerInformation signer) throws IOException, TSPException{
+        private SignerInformation signTimeStamp(SignerInformation signer) throws IOException, TSPException {
             AttributeTable unsignedAttributes = signer.getUnsignedAttributes();
 
             ASN1EncodableVector vector = new ASN1EncodableVector();
-            if (unsignedAttributes != null){
+            if (unsignedAttributes != null) {
                 vector = unsignedAttributes.toASN1EncodableVector();
             }
 
@@ -240,7 +253,7 @@ public class DocumentSignPdfJob extends Job {
 
             SignerInformation newSigner = SignerInformation.replaceUnsignedAttributes(signer, new AttributeTable(signAttributes));
 
-            if (newSigner == null){
+            if (newSigner == null) {
                 return signer;
             }
 
@@ -256,7 +269,7 @@ public class DocumentSignPdfJob extends Job {
 
         private int status;
 
-        public DocumentSignEvent(String password,String filePath, int status) {
+        public DocumentSignEvent(String password, String filePath, int status) {
             this.filePath = filePath;
             this.password = password;
             this.status = status;
@@ -274,7 +287,6 @@ public class DocumentSignPdfJob extends Job {
             return status;
         }
     }
-
 
 
 }
