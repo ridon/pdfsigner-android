@@ -1,16 +1,18 @@
 package id.sivion.pdfsign.verification;
 
-import android.app.ActivityOptions;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.security.KeyChain;
 import android.security.KeyChainAliasCallback;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.AppBarLayout;
 import android.support.v4.content.ContextCompat;
@@ -58,12 +60,14 @@ import butterknife.ButterKnife;
 import de.greenrobot.event.EventBus;
 import id.sivion.pdfsign.DroidSignerApplication;
 import id.sivion.pdfsign.R;
-import id.sivion.pdfsign.activity.SignPdfActivity;
 import id.sivion.pdfsign.job.CertificateChainJob;
 import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
+import id.sivion.pdfsign.job.GeoCoderJob;
 import id.sivion.pdfsign.job.JobStatus;
+import id.sivion.pdfsign.utils.GpsTracker;
 import id.sivion.pdfsign.utils.NetworkUtil;
+import id.sivion.pdfsign.utils.PermissionUtil;
 import id.sivion.pdfsign.utils.TsaClient;
 
 /**
@@ -83,8 +87,8 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     @BindView(R.id.signature_info)
     RelativeLayout signatureInfo;
 
-    private TextView editSignatureName;
-    private Button btnBrowseCertificate;
+    private TextView textSignatureName, textLocationStatus;
+    private EditText editLocationName;
     private TextView textSubjectdn;
     private TextView textIssuer;
     private TextView textExpire;
@@ -95,6 +99,8 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     private ProgressDialog progressDialog;
     private JobManager jobManager;
     private AlertDialog signDialog, requestSignDialog;
+    private GpsTracker gpsTracker;
+    private Location currentLocation;
 
     private Uri pdfUri;
     private String name, reason, location;
@@ -146,6 +152,27 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
     public void onStop() {
         super.onStop();
         EventBus.getDefault().unregister(this);
+        if (gpsTracker != null) {
+            gpsTracker.stopUsingGps();
+        }
+    }
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PermissionUtil.REQUEST_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+
+                    requestSignAction();
+                } else {
+                    PermissionUtil.isLocationGranted(this);
+                }
+            } else {
+                PermissionUtil.isLocationGranted(this);
+            }
+        }
     }
 
 
@@ -236,13 +263,35 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
             @Override
             public void onClick(View view) {
                 requestSignDialog.dismiss();
-                jobManager.addJobInBackground(new CertificateCheckJob());
-
+//                jobManager.addJobInBackground(new CertificateCheckJob());
+                requestSignAction();
             }
         });
 
         requestSignDialog.show();
 
+    }
+
+    private void requestSignAction() {
+        if (PermissionUtil.isLocationGranted(this)) {
+            Log.d(getClass().getSimpleName(), "all permission granted");
+
+            gpsTracker = new GpsTracker(this);
+            if (gpsTracker.isCanGetLocation()) {
+                Log.d(getClass().getSimpleName(), "gps track available");
+
+                currentLocation = gpsTracker.getLocation();
+                if (currentLocation != null) {
+                    Log.d(getClass().getSimpleName(), "latitude : " + currentLocation.getLatitude());
+                    Log.d(getClass().getSimpleName(), "longitude : " + currentLocation.getLongitude());
+                }
+
+                jobManager.addJobInBackground(new CertificateCheckJob());
+            } else {
+                Log.d(getClass().getSimpleName(), "gps track not available");
+                gpsTracker.showSettingsAlert();
+            }
+        }
     }
 
     public void browseCertificate(View view){
@@ -263,12 +312,13 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
         final LinearLayout layoutOptions = (LinearLayout) view.findViewById(R.id.layout_sign_options);
         TextView signOptions = (TextView) view.findViewById(R.id.sign_options);
-        final TextView editName = (TextView) view.findViewById(R.id.edit_name);
-        final EditText editLocation = (EditText) view.findViewById(R.id.edit_location);
+        textSignatureName = (TextView) view.findViewById(R.id.text_signer_name);
+        textLocationStatus = (TextView) view.findViewById(R.id.text_location_status);
+        editLocationName = (EditText) view.findViewById(R.id.edit_location);
         final Spinner spinReason = (Spinner) view.findViewById(R.id.spin_reason);
         CheckBox checkUseTsa = (CheckBox) view.findViewById(R.id.check_use_tsa);
         final Button btnTsaHelp = (Button) view.findViewById(R.id.btn_tsa_help);
-        editSignatureName = editName;
+
 
         String[] reasons = new String[]{"Menyetujui Dokumen","Telah membaca dan mengerti Dokumen","Menyatakan Kebenaran Informasi"};
         final ArrayAdapter<String> reasonAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, reasons);
@@ -332,8 +382,8 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
 
-                name = editName.getText().toString();
-                location = editLocation.getText().toString();
+                name = textSignatureName.getText().toString();
+                location = editLocationName.getText().toString();
 
                 jobManager.addJobInBackground(DocumentSignPdfJob.
                         newInstance(pdfUri,
@@ -455,7 +505,6 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
     }
 
-
     public void onEventMainThread(CertificateChainJob.CertificateChainEvent event) {
         if (event.getStatus() == JobStatus.SUCCESS) {
 
@@ -471,7 +520,6 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
     }
 
-
     public void onEventMainThread(CertificateCheckJob.CheckEvent event) {
         if (event.getStatus() == CertificateCheckJob.CheckEvent.VALID) {
             if (useTsa && !NetworkUtil.isConnected(this)) {
@@ -481,12 +529,18 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
 
             signDialog.show();
 
+            if (currentLocation != null) {
+                jobManager.addJobInBackground(new GeoCoderJob(currentLocation));
+            } else {
+                Log.d(getClass().getSimpleName(), "current location null");
+            }
+
             try {
                 X509Certificate cert = (X509Certificate) event.getObject();
                 X500Name x500Name = new JcaX509CertificateHolder(cert).getSubject();
                 RDN cn = x500Name.getRDNs(BCStyle.CN)[0];
 
-                editSignatureName.setText(IETFUtils.valueToString(cn.getFirst().getValue()));
+                textSignatureName.setText(IETFUtils.valueToString(cn.getFirst().getValue()));
             } catch (CertificateEncodingException e) {
                 e.printStackTrace();
             }
@@ -495,11 +549,33 @@ public class PdfView extends AppCompatActivity implements KeyChainAliasCallback 
         }
     }
 
-
     public void onEventMainThread(TsaClient.TsaEvent event) {
         if (event.getStatus() == TsaClient.TsaEvent.FAILED) {
 
             dialogTsaFailed();
+        }
+    }
+
+    public void onEventMainThread(GeoCoderJob.GeoEvent event) {
+        if (event.getJobStatus() == JobStatus.ADDED) {
+            textLocationStatus.setVisibility(View.VISIBLE);
+        }
+
+        if (event.getJobStatus() == JobStatus.SUCCESS) {
+            editLocationName.setText(event.getCity());
+            textLocationStatus.setVisibility(View.GONE);
+        }
+
+        if (event.getJobStatus() == JobStatus.ABORTED) {
+            textLocationStatus.setVisibility(View.GONE);
+        }
+    }
+
+    public void onEventMainThread(GpsTracker.GPSEvent event) {
+        Log.d(getClass().getSimpleName(),"new Location available ");
+        currentLocation = event.getLocation();
+        if (currentLocation != null) {
+            jobManager.addJobInBackground(new GeoCoderJob(currentLocation));
         }
     }
 

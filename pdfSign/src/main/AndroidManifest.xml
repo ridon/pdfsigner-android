@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
     <application
         android:name="id.sivion.pdfsign.DroidSignerApplication"
@@ -60,6 +62,7 @@
         <meta-data
             android:name="io.fabric.ApiKey"
             android:value="9dc73286ab8262dc9231cb4f07347b9fbdcb5847" />
+
     </application>
 
 

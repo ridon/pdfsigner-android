@@ -27,7 +27,7 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/edit_name"
+            android:id="@+id/text_signer_name"
             android:layout_width="match_parent"
             android:layout_height="35dp"
             android:layout_marginTop="8dp"
@@ -44,6 +44,14 @@
             android:background="@drawable/edit_stroke"
             android:hint="Lokasi"
             android:padding="8dp" />
+
+        <TextView
+            android:id="@+id/text_location_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:visibility="gone"
+            android:text="Sedang mendapatakan lokasi ..."/>
 
         <Spinner
             android:id="@+id/spin_reason"

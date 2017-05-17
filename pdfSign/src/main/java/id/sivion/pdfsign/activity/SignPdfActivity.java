@@ -4,15 +4,21 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.res.ResourcesCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -39,9 +45,11 @@ import org.spongycastle.asn1.x500.style.IETFUtils;
 import org.spongycastle.cert.jcajce.JcaX509CertificateHolder;
 
 import java.io.File;
-import java.lang.reflect.Array;
+import java.io.IOException;
 import java.security.cert.CertificateEncodingException;
 import java.security.cert.X509Certificate;
+import java.util.List;
+import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -51,8 +59,11 @@ import id.sivion.pdfsign.DroidSignerApplication;
 import id.sivion.pdfsign.R;
 import id.sivion.pdfsign.job.CertificateCheckJob;
 import id.sivion.pdfsign.job.DocumentSignPdfJob;
+import id.sivion.pdfsign.job.GeoCoderJob;
 import id.sivion.pdfsign.job.JobStatus;
+import id.sivion.pdfsign.utils.GpsTracker;
 import id.sivion.pdfsign.utils.NetworkUtil;
+import id.sivion.pdfsign.utils.PermissionUtil;
 import id.sivion.pdfsign.utils.TsaClient;
 
 /**
@@ -70,11 +81,14 @@ public class SignPdfActivity extends AppCompatActivity {
 
     private SharedPreferences preferences;
 
-    private TextView editSignatureName;
+    private TextView textSignatureName, textLocationStatus;
+    private EditText editLocationName;
     private DroidSignerApplication app;
     private JobManager jobManager;
     private ProgressDialog progressDialog;
     private AlertDialog signAlert;
+    private GpsTracker gpsTracker;
+    private Location currentLocation;
 
     private Uri pdfUri;
     private String name, reason, location;
@@ -107,6 +121,7 @@ public class SignPdfActivity extends AppCompatActivity {
                 .load();
 
         setupSignAlertDialog();
+
     }
 
     private void failedOpenPdf() {
@@ -132,14 +147,15 @@ public class SignPdfActivity extends AppCompatActivity {
 
         final LinearLayout layoutOptions = (LinearLayout) view.findViewById(R.id.layout_sign_options);
         TextView signOptions = (TextView) view.findViewById(R.id.sign_options);
-        final TextView editName = (TextView) view.findViewById(R.id.edit_name);
-        final EditText editLocation = (EditText) view.findViewById(R.id.edit_location);
+        textSignatureName = (TextView) view.findViewById(R.id.text_signer_name);
+        textLocationStatus = (TextView) view.findViewById(R.id.text_location_status);
+        editLocationName = (EditText) view.findViewById(R.id.edit_location);
         final Spinner spinReason = (Spinner) view.findViewById(R.id.spin_reason);
         CheckBox checkUseTsa = (CheckBox) view.findViewById(R.id.check_use_tsa);
         final Button btnTsaHelp = (Button) view.findViewById(R.id.btn_tsa_help);
-        editSignatureName = editName;
 
-        String[] reasons = new String[]{"Menyetujui Dokumen","Telah membaca dan mengerti Dokumen","Menyatakan Kebenaran Informasi"};
+
+        String[] reasons = new String[]{"Menyetujui Dokumen", "Telah membaca dan mengerti Dokumen", "Menyatakan Kebenaran Informasi"};
         final ArrayAdapter<String> reasonAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, reasons);
         spinReason.setAdapter(reasonAdapter);
 
@@ -201,8 +217,8 @@ public class SignPdfActivity extends AppCompatActivity {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
 
-                name = editSignatureName.getText().toString();
-                location = editLocation.getText().toString();
+                name = textSignatureName.getText().toString();
+                location = editLocationName.getText().toString();
 
                 jobManager.addJobInBackground(DocumentSignPdfJob.
                         newInstance(pdfUri,
@@ -219,7 +235,7 @@ public class SignPdfActivity extends AppCompatActivity {
 
     @OnClick(R.id.btn_sign)
     public void onButtonClick(Button button) {
-        jobManager.addJobInBackground(new CertificateCheckJob());
+        requestSign();
     }
 
     @Override
@@ -232,8 +248,27 @@ public class SignPdfActivity extends AppCompatActivity {
     public void onStop() {
         super.onStop();
         EventBus.getDefault().unregister(this);
+        if (gpsTracker != null) {
+            gpsTracker.stopUsingGps();
+        }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == PermissionUtil.REQUEST_LOCATION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+
+                    requestSign();
+                } else {
+                    PermissionUtil.isLocationGranted(this);
+                }
+            } else {
+                PermissionUtil.isLocationGranted(this);
+            }
+        }
+    }
 
     public void onEventMainThread(DocumentSignPdfJob.DocumentSignEvent event) {
 
@@ -259,13 +294,18 @@ public class SignPdfActivity extends AppCompatActivity {
             }
 
             signAlert.show();
+            if (currentLocation != null) {
+                jobManager.addJobInBackground(new GeoCoderJob(currentLocation));
+            } else {
+                Log.d(getClass().getSimpleName(), "current location null");
+            }
 
             try {
                 X509Certificate cert = (X509Certificate) event.getObject();
                 X500Name x500Name = new JcaX509CertificateHolder(cert).getSubject();
                 RDN cn = x500Name.getRDNs(BCStyle.CN)[0];
 
-                editSignatureName.setText(IETFUtils.valueToString(cn.getFirst().getValue()));
+                textSignatureName.setText(IETFUtils.valueToString(cn.getFirst().getValue()));
             } catch (CertificateEncodingException e) {
                 e.printStackTrace();
             }
@@ -277,8 +317,53 @@ public class SignPdfActivity extends AppCompatActivity {
 
     public void onEventMainThread(TsaClient.TsaEvent event) {
         if (event.getStatus() == TsaClient.TsaEvent.FAILED) {
-
             dialogTsaFailed();
+        }
+    }
+
+    public void onEventMainThread(GeoCoderJob.GeoEvent event) {
+        if (event.getJobStatus() == JobStatus.ADDED) {
+            textLocationStatus.setVisibility(View.VISIBLE);
+        }
+
+        if (event.getJobStatus() == JobStatus.SUCCESS) {
+            editLocationName.setText(event.getCity());
+            textLocationStatus.setVisibility(View.GONE);
+        }
+
+        if (event.getJobStatus() == JobStatus.ABORTED) {
+            textLocationStatus.setVisibility(View.GONE);
+        }
+    }
+
+    public void onEventMainThread(GpsTracker.GPSEvent event) {
+        Log.d(getClass().getSimpleName(),"new Location available ");
+        currentLocation = event.getLocation();
+        if (currentLocation != null) {
+            jobManager.addJobInBackground(new GeoCoderJob(currentLocation));
+        }
+    }
+
+
+    private void requestSign() {
+        if (PermissionUtil.isLocationGranted(this)) {
+            Log.d(getClass().getSimpleName(), "all permission granted");
+
+            gpsTracker = new GpsTracker(this);
+            if (gpsTracker.isCanGetLocation()) {
+                Log.d(getClass().getSimpleName(), "gps track available");
+
+                currentLocation = gpsTracker.getLocation();
+                if (currentLocation != null) {
+                    Log.d(getClass().getSimpleName(), "latitude : " + currentLocation.getLatitude());
+                    Log.d(getClass().getSimpleName(), "longitude : " + currentLocation.getLongitude());
+                }
+
+                jobManager.addJobInBackground(new CertificateCheckJob());
+            } else {
+                Log.d(getClass().getSimpleName(), "gps track not available");
+                gpsTracker.showSettingsAlert();
+            }
         }
     }
 
@@ -311,7 +396,7 @@ public class SignPdfActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void dialogNoInternet(){
+    private void dialogNoInternet() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setIcon(R.mipmap.ic_launcher);
         builder.setTitle(R.string.app_name);
